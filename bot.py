@@ -8,6 +8,10 @@ import pytz
 from PIL import Image
 import random
 import os
+import requests
+import base64
+
+from services.to_github import *
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -307,6 +311,42 @@ async def on_message(message):
                 text="Showing only 5 upcoming CTF events. For more, check ctftime.org.")
         else:
             await message.channel.send("No upcoming CTF events found.")
+
+    elif message.content.startswith("---") and message.content.endswith("---"):
+        try:
+            lines = message.content.strip().split("\n")
+            if len(lines) < 4 or not lines[0].startswith("---") or not lines[-1].endswith("---"):
+                await message.channel.send("Invalid format. Please follow the required format.")
+                return
+
+            category = None
+            challenge_name = None
+            content_start_index = None
+
+            for i, line in enumerate(lines[1:-1]):
+                if line.startswith("CTF:"):
+                    ctf = line.split("CTF:")[1].strip()
+                elif line.startswith("Category:"):
+                    category = line.split("Category:")[1].strip()
+                elif line.startswith("Challenge Name:"):
+                    challenge_name = line.split("Challenge Name:")[1].strip()
+                elif line.strip() == "":
+                    content_start_index = i + 2
+                    break
+
+            if not ctf or not category or not challenge_name or content_start_index is None:
+                await message.channel.send("Missing required fields (Category or Challenge Name).")
+                return
+
+            content = "\n".join(lines[content_start_index:-1])
+
+            sender_username = message.author.name
+
+            create_folder_structure(ctf, category, challenge_name, content, sender_username)
+            await message.channel.send(f"Folder structure `CTF-writeups/{datetime.datetime.now().year}/{ctf}/{category}-{challenge_name}.md` created successfully.")
+
+        except Exception as e:
+            await message.channel.send(f"Failed to process the request: {str(e)}")
 
     elif message.content.startswith('>bot help'):
         await send_help_message(message.channel)
