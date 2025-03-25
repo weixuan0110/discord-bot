@@ -1,7 +1,7 @@
 import os
 import requests
 import base64
-import datetime
+from datetime import datetime
 
 GITHUB_REPO_OWNER = os.getenv("GITHUB_REPO_OWNER")
 GITHUB_REPO_NAME = os.getenv("GITHUB_REPO_NAME")
@@ -27,7 +27,7 @@ def create_folder_structure(ctf, category, challenge_name, content, sender_usern
     parent_path = PARENT_FOLDER
     create_folder_on_github(parent_path, headers)
 
-    current_year = str(datetime.datetime.now().year)
+    current_year = str(datetime.now().year)
     challenge_path = f"{parent_path}/{current_year}/{ctf}"
     create_folder_on_github(challenge_path, headers)
 
