@@ -215,7 +215,7 @@ async def send_help_message(channel):
         ">ctf upcoming\n"
         "   List upcoming CTF events for the week. Only shows 5 events, check ctftime.org for more.\n\n"
         ">ctf writeup\n"
-        "   Upload writeups to REU1N0N Github repo.\n\n"
+        "   Compile and upload writeups to REU1N0N Github repo. If there's an existing \n\n"
         ">ask <question/idea> *\n"
         "   Send an anonymous question/idea to the general anonymous questions channel.\n\n"
         ">ask ctf <ctfchannel_name> <question/idea> *\n"
@@ -334,7 +334,7 @@ async def on_message(message):
     elif message.content.startswith(">ctf writeup"):
         try:
             channel = message.channel
-            messages = [msg async for msg in channel.history(limit=100)] # Limit can change but it should be enough
+            messages = [msg async for msg in channel.history(limit=10000)] # Limit can change but it should be enough
 
             writeup_messages = [
                 msg for msg in messages
