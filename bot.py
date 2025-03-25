@@ -335,59 +335,46 @@ async def on_message(message):
 
     elif message.content.startswith(">ctf writeup"):
         try:
-            channel = message.channel
-            messages = [msg async for msg in channel.history(limit=10000)] # Limit can change but it should be enough
-
-            writeup_messages = [
-                msg for msg in messages
-                if msg.content.startswith("---") and msg.content.endswith("---")
-            ]
-
+            cat_name = message.channel.category.name if message.channel.category else ""
+            if not (cat_name.startswith("ctf-") or cat_name.startswith("archive-")):
+                await message.channel.send("This command can only be used in a CTF channel.")
+                return
+            ctf = message.channel.name
+            messages = [msg async for msg in message.channel.history(limit=10000)]
+            writeup_messages = [msg for msg in messages if msg.content.startswith("---") and msg.content.endswith("---")]
             if not writeup_messages:
                 await message.channel.send("No writeup found.")
                 return
-
             for writeup_msg in writeup_messages:
                 try:
                     lines = writeup_msg.content.strip().split("\n")
                     if len(lines) < 4 or not lines[0].startswith("---") or not lines[-1].endswith("---"):
                         continue
-
                     category = None
                     challenge_name = None
                     content_start_index = None
-
                     for i, line in enumerate(lines[1:-1]):
-                        if line.startswith("CTF:"):
-                            ctf = line.split("CTF:")[1].strip()
-                        elif line.startswith("Category:"):
+                        if line.startswith("Category:"):
                             category = line.split("Category:")[1].strip()
                         elif line.startswith("Challenge Name:"):
                             challenge_name = line.split("Challenge Name:")[1].strip()
                         elif line.strip() == "":
-                            content_start_index = i + 2  # Start of content after blank line
+                            content_start_index = i + 2
                             break
-
-                    if not ctf or not category or not challenge_name or content_start_index is None:
+                    if not category or not challenge_name or content_start_index is None:
                         await message.channel.send("Missing required fields (Category or Challenge Name).")
                         return
-
-                    # Extract content below the separator
                     content = "\n".join(lines[content_start_index:-1])
-
                     sender_username = message.author.name
-
                     a = create_folder_structure(ctf, category, challenge_name, content, sender_username)
                     if a == "exist":
-                        await message.channel.send(f"`CTF-writeups/{datetime.datetime.now().year}/{ctf}/{category}-{challenge_name}.md` already exists. Skipping...")
+                        await message.channel.send(f"`CTF-writeups/{datetime.now().year}/{ctf}/{category}-{challenge_name}.md` already exists. Skipping...")
                     elif a == "updated":
-                        await message.channel.send(f"Updating `CTF-writeups/{datetime.datetime.now().year}/{ctf}/{category}-{challenge_name}.md`...")
+                        await message.channel.send(f"Updating `CTF-writeups/{datetime.now().year}/{ctf}/{category}-{challenge_name}.md`...")
                     elif a == "created":
-                        await message.channel.send(f"Creating`CTF-writeups/{datetime.datetime.now().year}/{ctf}/{category}-{challenge_name}.md`...")
-
+                        await message.channel.send(f"Creating `CTF-writeups/{datetime.now().year}/{ctf}/{category}-{challenge_name}.md`...")
                 except Exception as e:
                     print(f"Error processing writeup message: {str(e)}")
-
             await message.channel.send("All previous writeup have been processed.")
         except Exception as e:
             await message.channel.send(f"Failed to process the request: {str(e)}")
