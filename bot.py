@@ -364,7 +364,7 @@ async def on_message(message):
                         await message.channel.send("Missing required fields (Category or Challenge Name).")
                         return
                     content = "\n".join(lines[content_start_index:-1])
-                    sender_username = message.author.name
+                    sender_username = writeup_msg.author.name
                     a = create_folder_structure(ctf, category, challenge_name, content, sender_username)
                     if a == "exist":
                         await message.channel.send(f"`CTF-writeups/{datetime.now().year}/{ctf}/{category}-{challenge_name}.md` already exists. Skipping...")
