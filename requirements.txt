@@ -4,3 +4,4 @@ Pillow
 aiohttp
 base64
 requests
+dotenv
