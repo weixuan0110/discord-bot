@@ -8,6 +8,10 @@ import pytz
 from PIL import Image
 import random
 import os
+import requests
+import base64
+
+from services.to_github import *
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -210,6 +214,8 @@ async def send_help_message(channel):
         "   Move the current CTF channel to the archive category.\n\n"
         ">ctf upcoming\n"
         "   List upcoming CTF events for the week. Only shows 5 events, check ctftime.org for more.\n\n"
+        ">ctf writeup\n"
+        "   Compile and upload writeups to REU1N0N Github repo. If there's an existing \n\n"
         ">ask <question/idea> *\n"
         "   Send an anonymous question/idea to the general anonymous questions channel.\n\n"
         ">ask ctf <ctfchannel_name> <question/idea> *\n"
@@ -221,6 +227,23 @@ async def send_help_message(channel):
     )
     await channel.send(help_message)
 
+async def help_writeup_command(channel):
+    writeup_message = (
+        "**Command:** >ctf writeup\n\n"
+        "**What:** Upload all previous writeup to REU1N0N Github repo from current channel.\n\n"
+        "**When:** Suggested to be used at the end of the CTF or all writeups are available in format.\n\n"
+        "**Format**\n"
+        "```\n"
+        "---\n"
+        "CTF: <ctf_name>\n"
+        "Category: <category_name>\n"
+        "Challenge Name: <challenge_name>\n"
+        "\n"
+        "Write anything here with markdown\n"
+        "---\n"
+        "```\n"
+    )
+    await channel.send(writeup_message)
 
 @bot.event
 async def on_ready():
@@ -308,7 +331,71 @@ async def on_message(message):
         else:
             await message.channel.send("No upcoming CTF events found.")
 
+    elif message.content.startswith(">ctf writeup"):
+        try:
+            channel = message.channel
+            messages = [msg async for msg in channel.history(limit=10000)] # Limit can change but it should be enough
+
+            writeup_messages = [
+                msg for msg in messages
+                if msg.content.startswith("---") and msg.content.endswith("---")
+            ]
+
+            if not writeup_messages:
+                await message.channel.send("No writeup found.")
+                return
+
+            for writeup_msg in writeup_messages:
+                try:
+                    lines = writeup_msg.content.strip().split("\n")
+                    if len(lines) < 4 or not lines[0].startswith("---") or not lines[-1].endswith("---"):
+                        continue
+
+                    category = None
+                    challenge_name = None
+                    content_start_index = None
+
+                    for i, line in enumerate(lines[1:-1]):
+                        if line.startswith("CTF:"):
+                            ctf = line.split("CTF:")[1].strip()
+                        elif line.startswith("Category:"):
+                            category = line.split("Category:")[1].strip()
+                        elif line.startswith("Challenge Name:"):
+                            challenge_name = line.split("Challenge Name:")[1].strip()
+                        elif line.strip() == "":
+                            content_start_index = i + 2  # Start of content after blank line
+                            break
+
+                    if not ctf or not category or not challenge_name or content_start_index is None:
+                        await message.channel.send("Missing required fields (Category or Challenge Name).")
+                        return
+
+                    # Extract content below the separator
+                    content = "\n".join(lines[content_start_index:-1])
+
+                    sender_username = message.author.name
+
+                    a = create_folder_structure(ctf, category, challenge_name, content, sender_username)
+                    if a == "exist":
+                        await message.channel.send(f"`CTF-writeups/{datetime.datetime.now().year}/{ctf}/{category}-{challenge_name}.md` already exists. Skipping...")
+                    elif a == "updated":
+                        await message.channel.send(f"Updating `CTF-writeups/{datetime.datetime.now().year}/{ctf}/{category}-{challenge_name}.md`...")
+                    elif a == "created":
+                        await message.channel.send(f"Creating`CTF-writeups/{datetime.datetime.now().year}/{ctf}/{category}-{challenge_name}.md`...")
+
+                except Exception as e:
+                    print(f"Error processing writeup message: {str(e)}")
+
+            await message.channel.send("All previous writeup have been processed.")
+        except Exception as e:
+            await message.channel.send(f"Failed to process the request: {str(e)}")
+
     elif message.content.startswith('>bot help'):
-        await send_help_message(message.channel)
+        parts = message.content.split()
+        if len(parts) > 2:
+            if parts[2] == 'writeup':
+                await help_writeup_command(message.channel)
+            else:
+                await send_help_message(message.channel)
 
 bot.run(TOKEN)
