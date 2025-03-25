@@ -237,7 +237,6 @@ async def help_writeup_command(channel):
         "**Format**\n"
         "```\n"
         "---\n"
-        "CTF: <ctf_name>\n"
         "Category: <category_name>\n"
         "Challenge Name: <challenge_name>\n"
         "\n"
