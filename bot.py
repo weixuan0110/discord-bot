@@ -10,8 +10,10 @@ import random
 import os
 import requests
 import base64
-
 from services.to_github import *
+from dotenv import load_dotenv
+
+load_dotenv()
 
 intents = discord.Intents.default()
 intents.messages = True
