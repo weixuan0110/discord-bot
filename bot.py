@@ -10,10 +10,14 @@ import random
 import os
 import requests
 import base64
+import re
 from services.to_github import *
 from dotenv import load_dotenv
 
 load_dotenv()
+
+def normalize_name(text):
+    return re.sub(r'[^a-z0-9]', '', text.lower())
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -34,23 +38,19 @@ CHECK_INTERVAL = 24 * 60 * 60
 current_year = datetime.now().year
 current_year_short = str(current_year)[-2:]
 
-# Utility Functions
 async def send_anonymous_message(channel_id, formatted_message, dm_channel):
     channel = bot.get_channel(channel_id)
     if channel:
         await channel.send(formatted_message)
         await dm_channel.send(f"Your message has been sent to {channel.name} anonymously.")
 
-
 async def is_member_of_guild(user):
     guild = bot.get_guild(SERVER_ID)
     return any(member.id == user.id for member in guild.members)
 
-
 def convert_to_myt(utc_time_str):
     utc_time = datetime.fromisoformat(utc_time_str.replace('Z', '+00:00'))
     return utc_time.astimezone(pytz.timezone('Asia/Kuala_Lumpur')).isoformat()
-
 
 async def fetch_event_details(event_id):
     url = f'https://ctftime.org/api/v1/events/{event_id}/'
@@ -58,17 +58,14 @@ async def fetch_event_details(event_id):
         async with session.get(url) as response:
             return await response.json() if response.status == 200 else None
 
-
 async def fetch_image(url):
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             return Image.open(io.BytesIO(await response.read())) if response.status == 200 else None
 
-
 async def create_category_if_not_exists(guild, category_name):
     category = discord.utils.get(guild.categories, name=category_name)
     return category or await guild.create_category(category_name)
-
 
 async def move_channel_to_archive(channel):
     global current_year
@@ -76,16 +73,13 @@ async def move_channel_to_archive(channel):
     await channel.edit(category=archive_category)
     print(f"Moved channel {channel.name} to {archive_category.name}")
 
-
 async def fetch_upcoming_events():
     start = int(datetime.now().timestamp())
     end = int((datetime.now() + timedelta(weeks=2)).timestamp())
     url = f'https://ctftime.org/api/v1/events/?limit=5&start={start}&finish={end}'
-
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             return await response.json() if response.status == 200 else None
-
 
 async def check_yearly_update():
     global current_year, current_year_short
@@ -107,10 +101,7 @@ async def handle_anonymous_question(message, channel_name=None):
         question = ' '.join(message.content.split(' ')[3:]).strip()
     else:
         question = message.content[len('>ask '):].strip()
-
-    formatted_message = f"**Anon:**\n"
-    formatted_message += f"```markdown\n{question}\n```"
-
+    formatted_message = f"**Anon:**\n```markdown\n{question}\n```"
     if channel_name:
         guild = bot.get_guild(SERVER_ID)
         channel = discord.utils.get(guild.channels, name=channel_name)
@@ -118,21 +109,17 @@ async def handle_anonymous_question(message, channel_name=None):
         if not channel or (channel.category and channel.category.name not in valid_categories):
             await message.channel.send(f"Invalid channel '{channel_name}' for this command.")
             return
-        await send_anonymous_message(None, channel.id, formatted_message, message.channel)
+        await send_anonymous_message(channel.id, formatted_message, message.channel)
     else:
-        await send_anonymous_message(None, CTF_HELPME_CHANNEL_ID, formatted_message, message.channel)
-
+        await send_anonymous_message(CTF_HELPME_CHANNEL_ID, formatted_message, message.channel)
 
 async def create_channel_and_event(guild, event):
     category_name = f'ctf-{current_year}'
     channel_name = event['title'].lower().replace(' ', '-')
-
     category = await create_category_if_not_exists(guild, category_name)
     for channel in category.channels:
         if channel.name == channel_name:
             return None, f"Cannot create CTF '{event['title']}', duplicate event."
-
-    # Create the interested role with the current year
     role_name = f"{event['title']} {current_year_short}"
     interested_role = await guild.create_role(
         name=role_name,
@@ -140,48 +127,39 @@ async def create_channel_and_event(guild, event):
         mentionable=True,
         reason=f"Role for {event['title']} CTF event"
     )
-
     overwrites = {
         guild.default_role: discord.PermissionOverwrite(view_channel=False),
-        interested_role: discord.PermissionOverwrite(
-            view_channel=True, send_messages=True)
+        interested_role: discord.PermissionOverwrite(view_channel=True, send_messages=True)
     }
     channel = await guild.create_text_channel(channel_name, category=category, overwrites=overwrites)
-
-    start_time_myt, finish_time_myt = convert_to_myt(
-        event['start']), convert_to_myt(event['finish'])
+    start_time_myt, finish_time_myt = convert_to_myt(event['start']), convert_to_myt(event['finish'])
     image = await fetch_image(event['logo']) if event.get('logo') else None
-
     if image is None:
         image_url = "https://raw.githubusercontent.com/vicevirus/front-end-ctf-sharing-materials/main/ctf_event.png"
         image = await fetch_image(image_url)
-
     with io.BytesIO() as image_binary:
         image.save(image_binary, format='PNG')
         image_binary.seek(0)
         image_bytes = image_binary.read()
-
-    description = event['description'] if len(
-        event['description']) <= 1000 else event['description'][:997] + '...'
-
+    description = event['description'] if len(event['description']) <= 1000 else event['description'][:997] + '...'
     scheduled_event = await guild.create_scheduled_event(
-        name=event['title'], start_time=datetime.fromisoformat(start_time_myt),
-        end_time=datetime.fromisoformat(finish_time_myt), description=description,
-        entity_type=discord.EntityType.external, privacy_level=discord.PrivacyLevel.guild_only,
-        location=event['url'], image=image_bytes
+        name=event['title'],
+        start_time=datetime.fromisoformat(start_time_myt),
+        end_time=datetime.fromisoformat(finish_time_myt),
+        description=description,
+        entity_type=discord.EntityType.external,
+        privacy_level=discord.PrivacyLevel.guild_only,
+        location=event['url'],
+        image=image_bytes
     )
-
     announce_channel = bot.get_channel(CTF_ANNOUNCE_CHANNEL_ID)
     if not announce_channel:
         return None, None, interested_role
-
     ctf_message = await announce_channel.send(
         f"@everyone Successfully created CTF \"{event['title']}\"! React with 👍 if you're playing or want to access the channel."
     )
     await ctf_message.add_reaction("👍")
-
     return channel, ctf_message, interested_role
-
 
 @bot.event
 async def on_raw_reaction_add(payload):
@@ -189,22 +167,18 @@ async def on_raw_reaction_add(payload):
         guild = bot.get_guild(payload.guild_id)
         if not guild:
             return
-
         member = guild.get_member(payload.user_id)
         if not member or member.bot:
             return
-
         message = await bot.get_channel(payload.channel_id).fetch_message(payload.message_id)
         if message.author.id != bot.user.id:
             return
-
         event_name = message.content.split('"')[1]
         role_name = f"{event_name} {current_year_short}"
         role = discord.utils.get(guild.roles, name=role_name)
         if role:
             await member.add_roles(role)
             await member.send(f"You have been granted access to the CTF channel for {event_name}.")
-
 
 async def send_help_message(channel):
     help_message = (
@@ -260,7 +234,6 @@ async def on_ready():
         await create_category_if_not_exists(guild, f'archive-{current_year}')
     bot.loop.create_task(check_yearly_update())
 
-
 @bot.event
 async def on_message(message):
     if isinstance(message.channel, discord.DMChannel) and message.author != bot.user:
@@ -303,18 +276,15 @@ async def on_message(message):
         events = await fetch_upcoming_events()
         seen_event_ids = set()
         if events:
-            embed = discord.Embed(
-                title="Upcoming CTF Events for the Week", color=random.randint(0, 0xFFFFFF))
+            embed = discord.Embed(title="Upcoming CTF Events for the Week", color=random.randint(0, 0xFFFFFF))
             for event in events:
                 if event['id'] in seen_event_ids:
                     continue
                 seen_event_ids.add(event['id'])
                 start_time = convert_to_myt(event['start'])
                 end_time = convert_to_myt(event['finish'])
-                start_time_formatted = datetime.fromisoformat(
-                    start_time).strftime('%Y-%m-%d %H:%M:%S MYT')
-                end_time_formatted = datetime.fromisoformat(
-                    end_time).strftime('%Y-%m-%d %H:%M:%S MYT')
+                start_time_formatted = datetime.fromisoformat(start_time).strftime('%Y-%m-%d %H:%M:%S MYT')
+                end_time_formatted = datetime.fromisoformat(end_time).strftime('%Y-%m-%d %H:%M:%S MYT')
                 duration = f"{event['duration']['days']}d {event['duration']['hours']}h"
                 event_embed = discord.Embed(
                     title=event['title'],
@@ -332,8 +302,7 @@ async def on_message(message):
                 if event['logo']:
                     event_embed.set_thumbnail(url=event['logo'])
                 await message.channel.send(embed=event_embed)
-            embed.set_footer(
-                text="Showing only 5 upcoming CTF events. For more, check ctftime.org.")
+            embed.set_footer(text="Showing only 5 upcoming CTF events. For more, check ctftime.org.")
         else:
             await message.channel.send("No upcoming CTF events found.")
 
@@ -368,6 +337,8 @@ async def on_message(message):
                     if not category or not challenge_name or content_start_index is None:
                         await message.channel.send("Missing required fields (Category or Challenge Name).")
                         return
+                    category = normalize_name(category)
+                    challenge_name = normalize_name(challenge_name)
                     content = "\n".join(lines[content_start_index:-1])
                     sender_username = writeup_msg.author.name
                     a = create_folder_structure(ctf, category, challenge_name, content, sender_username)
