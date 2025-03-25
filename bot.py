@@ -230,17 +230,23 @@ async def send_help_message(channel):
     await channel.send(help_message)
 
 async def help_writeup_command(channel):
+async def help_writeup_command(channel):
+async def help_writeup_command(channel):
     writeup_message = (
         "**Command:** >ctf writeup\n\n"
-        "**What:** Upload all previous writeup to REU1N0N Github repo from current channel.\n\n"
-        "**When:** Suggested to be used at the end of the CTF or all writeups are available in format.\n\n"
-        "**Format**\n"
+        "**What:** Upload all writeups from the current channel to the REU1N0N GitHub repo.\n\n"
+        "**When:** Use at the end of a CTF or when all writeups are ready.\n\n"
+        "**Format:** We accept markdown right after Category and Challenge Name. Here's a minimal example:\n"
         "```\n"
-        "---\n"
-        "Category: <category_name>\n"
-        "Challenge Name: <challenge_name>\n"
+        ---\n"
+        "Category: crypto\n"
+        "Challenge Name: baby-rsa\n"
         "\n"
-        "Write anything here with markdown\n"
+        "# Heading 1\n"
+        "### Heading 2\n"
+        "Regular text, `inline code`, and lists are supported.\n"
+        "- item 1\n"
+        "- item 2\n\n"
         "---\n"
         "```\n"
     )
