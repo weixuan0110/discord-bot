@@ -230,8 +230,6 @@ async def send_help_message(channel):
     await channel.send(help_message)
 
 async def help_writeup_command(channel):
-async def help_writeup_command(channel):
-async def help_writeup_command(channel):
     writeup_message = (
         "**Command:** >ctf writeup\n\n"
         "**What:** Upload all writeups from the current channel to the REU1N0N GitHub repo.\n\n"
