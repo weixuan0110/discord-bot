@@ -1,0 +1,9 @@
+# environment variable
+.env
+.venv/
+
+# swap files from editors
+*.swp
+
+# python cached
+__pycache__/
