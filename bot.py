@@ -130,7 +130,7 @@ async def create_channel_and_event(guild, event):
     overwrites = {
         guild.default_role: discord.PermissionOverwrite(view_channel=False),
         interested_role: discord.PermissionOverwrite(view_channel=True, send_messages=True)
-    }
+        }
     channel = await guild.create_text_channel(channel_name, category=category, overwrites=overwrites)
     start_time_myt, finish_time_myt = convert_to_myt(event['start']), convert_to_myt(event['finish'])
     image = await fetch_image(event['logo']) if event.get('logo') else None
@@ -152,14 +152,24 @@ async def create_channel_and_event(guild, event):
         location=event['url'],
         image=image_bytes
     )
+    placeholder_message = await channel.send(
+        f"URL: {event['url']}\n"
+        "Team: `<to be fill>`\n"
+        "Password: `<to be fill>`\n"
+        "\nIf want to share account\n"
+        "User: `<to be fill>`\n"
+        "Password: `<to be fill>`\n"
+    )
     announce_channel = bot.get_channel(CTF_ANNOUNCE_CHANNEL_ID)
     if not announce_channel:
         return None, None, interested_role
+    
     ctf_message = await announce_channel.send(
         f"@everyone Successfully created CTF \"{event['title']}\"! React with 👍 if you're playing or want to access the channel."
     )
     await ctf_message.add_reaction("👍")
     return channel, ctf_message, interested_role
+
 
 @bot.event
 async def on_raw_reaction_add(payload):
@@ -185,25 +195,26 @@ async def send_help_message(channel):
         "**Bot Commands:**\n"
         "```markdown\n"
         ">ctf create <ctftime_event_id>\n"
-        "   Create a new CTF channel and schedule an event.\n\n"
+        "    Create a new CTF channel and schedule an event.\n\n"
         ">ctf archive\n"
-        "   Move the current CTF channel to the archive category.\n\n"
+        "    Move the current CTF channel to the archive category.\n\n"
         ">ctf upcoming\n"
-        "   List upcoming CTF events for the week. Only shows 5 events, check ctftime.org for more.\n\n"
+        "    List upcoming CTF events for the week (shows only the next 5). See ctftime.org for more.\n\n"
         ">ctf writeup\n"
-        "   Compile and upload writeups to REU1N0N Github repo. If there's an existing \n\n"
-        ">ask <question/idea> *\n"
-        "   Send an anonymous question/idea to the general anonymous questions channel.\n\n"
-        ">ask ctf <ctfchannel_name> <question/idea> *\n"
-        "   Send an anonymous question/idea to a specific CTF channel.\n\n"
+        "    Compile and upload writeups to the REU1N0N GitHub repo.\n"
+        ">ask <question/idea>\n"
+        "    Send an anonymous question or idea to the general anonymous questions channel.\n\n"
+        ">ask ctf <ctfchannel_name> <question/idea>\n"
+        "    Send an anonymous question or idea to a specific CTF channel.\n\n"
         ">bot help\n"
-        "   Show this help message.\n\n"
-        "* = Only works in DM, DM the bot\n"
+        "    Display this help message.\n\n"
+        ">bot help writeup\n"
+        "    Show details for the '>ctf writeup' command.\n"
         "```"
     )
     await channel.send(help_message)
 
-async def help_writeup_command(channel):
+async def send_writeup_command(channel):
     writeup_message = (
         "**Command:** >ctf writeup\n\n"
         "**What:** Upload all writeups from the current channel to the REU1N0N GitHub repo.\n\n"
@@ -236,6 +247,7 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
+    # This part is for processing messages via DM
     if isinstance(message.channel, discord.DMChannel) and message.author != bot.user:
         if await is_member_of_guild(message.author):
             if message.content.startswith('>ask ctf '):
@@ -247,10 +259,17 @@ async def on_message(message):
             elif message.content.startswith('>ask '):
                 await handle_anonymous_question(message)
             elif message.content.startswith('>bot help'):
-                await send_help_message(message.channel)
+                parts = message.content.split()
+                if len(parts) > 2:
+                    if parts[2] == 'writeup':
+                        await send_writeup_command(message.channel)
+                    else:
+                        await send_help_message(message.channel)
+                else:
+                    await send_help_message(message.channel)
         else:
             await message.channel.send("You must be a member of the server to use this command.")
-
+    # This part is for processing messages via Channel
     if message.content.startswith('>ctf create ') and message.channel.id == SPAMMING_CHANNEL_ID:
         if message.author.guild_permissions.administrator:
             event_id = message.content[len('>ctf create '):].strip()
@@ -358,8 +377,10 @@ async def on_message(message):
         parts = message.content.split()
         if len(parts) > 2:
             if parts[2] == 'writeup':
-                await help_writeup_command(message.channel)
+                await send_writeup_command(message.channel)
             else:
                 await send_help_message(message.channel)
+        else:
+            await send_help_message(message.channel)
 
 bot.run(TOKEN)
