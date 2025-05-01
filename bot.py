@@ -152,14 +152,6 @@ async def create_channel_and_event(guild, event):
         location=event['url'],
         image=image_bytes
     )
-    placeholder_message = await channel.send(
-        f"URL: {event['url']}\n"
-        "Team: `<to be fill>`\n"
-        "Password: `<to be fill>`\n"
-        "\nIf want to share account\n"
-        "User: `<to be fill>`\n"
-        "Password: `<to be fill>`\n"
-    )
     announce_channel = bot.get_channel(CTF_ANNOUNCE_CHANNEL_ID)
     if not announce_channel:
         return None, None, interested_role
