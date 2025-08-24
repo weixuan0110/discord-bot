@@ -29,10 +29,10 @@ intents.members = True
 bot = commands.Bot(command_prefix='>', intents=intents)
 
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-SPAMMING_CHANNEL_ID = 1250850841385238599
-SERVER_ID = 1250679106899673121
-CTF_HELPME_CHANNEL_ID = 1251857136804302969
-CTF_ANNOUNCE_CHANNEL_ID = 1251192205381472296
+SPAMMING_CHANNEL_ID = 1323613724669513841
+SERVER_ID = 1318208996108140585
+CTF_HELPME_CHANNEL_ID = 1318208996108140585
+CTF_ANNOUNCE_CHANNEL_ID = 1318208996108140585
 CHECK_INTERVAL = 24 * 60 * 60
 
 current_year = datetime.now().year
@@ -343,8 +343,8 @@ async def on_message(message):
                             content_start_index = i + 2
                             break
                     if not category or not challenge_name or content_start_index is None:
-                        await message.channel.send("Missing required fields (Category or Challenge Name).")
-                        return
+                        await message.channel.send(f"{writeup_msg.author.mention} Missing required fields (Category or Challenge Name) in message: https://discord.com/channels/{message.guild.id}/{message.channel.id}/{writeup_msg.id}")
+                        continue
                     category = normalize_name(category)
                     challenge_name = normalize_name(challenge_name)
                     content = "\n".join(lines[content_start_index:-1])
@@ -357,6 +357,7 @@ async def on_message(message):
                     elif a == "created":
                         await message.channel.send(f"Creating `CTF-writeups/{datetime.now().year}/{ctf}/{category}-{challenge_name}.md`...")
                 except Exception as e:
+                    await message.channel.send(f"{writeup_msg.author.mention} Error processing your writeup in message: https://discord.com/channels/{message.guild.id}/{message.channel.id}/{writeup_msg.id} - {str(e)}")
                     print(f"Error processing writeup message: {str(e)}")
             await message.channel.send("All previous writeup have been processed.")
         except Exception as e:
